@@ -23,8 +23,7 @@ return {
     opts = {
       cmdline = {
         keymap = {
-          ["<Tab>"] = { "show", "accept" },
-          ["<CR>"] = { "accept_and_enter", "fallback" },
+          preset = "cmdline",
         },
         completion = { menu = { auto_show = true } },
       },
