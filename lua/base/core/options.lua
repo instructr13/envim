@@ -62,6 +62,11 @@ vim.opt.winborder = "rounded"
 vim.opt.cmdheight = 0
 vim.opt.laststatus = 3
 
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldlevel = 9999
+vim.opt.foldmethod = "expr"
+vim.opt.foldtext = ""
+
 -- Make the settings do not override editorconfig
 vim.opt.expandtab = true
 vim.opt.tabstop = 2
