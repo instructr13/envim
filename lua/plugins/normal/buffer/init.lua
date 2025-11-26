@@ -4,4 +4,7 @@ return {
 
     opts = { restore_state = true },
   },
+  {
+    "saghen/filler-begone.nvim",
+  },
 }

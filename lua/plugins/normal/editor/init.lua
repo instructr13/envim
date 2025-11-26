@@ -215,6 +215,16 @@ return {
     },
   },
   {
+    "qwavies/smart-backspace.nvim",
+
+    event = { "InsertEnter", "CmdlineEnter" },
+
+    opts = {
+      enabled = true,
+      silent = true,
+    },
+  },
+  {
     "xzbdmw/clasp.nvim",
 
     lazy = true,
