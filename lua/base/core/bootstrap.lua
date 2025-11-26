@@ -64,6 +64,7 @@ end
 local function configure_plugin_manager()
   local spec = {
     { import = "plugins.core" },
+    { import = "vendor_plugins" },
   }
 
   if not vim.g.vscode then
