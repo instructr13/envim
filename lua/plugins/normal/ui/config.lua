@@ -65,6 +65,10 @@ function M.incline()
   }
 
   local function to_hex(number)
+    if number == nil then
+      return "#ffffff"
+    end
+
     return ("#%06x"):format(number)
   end
 
