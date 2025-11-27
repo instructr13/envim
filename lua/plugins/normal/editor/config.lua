@@ -30,6 +30,10 @@ function M.matchup_init()
 
   vim.g.matchup_matchparen_deferred = 1
   vim.g.matchup_surround_enabled = 1
+
+  vim.g.matchup_treesitter_enable_quotes = true
+  vim.g.matchup_treesitter_disable_virtual_text = true
+  vim.g.matchup_treesitter_include_match_words = true
 end
 
 function M.todo_comment()

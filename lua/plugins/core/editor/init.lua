@@ -60,5 +60,14 @@ return {
   },
   {
     "chrisgrieser/nvim-puppeteer",
+
+    lazy = false,
+  },
+  {
+    "chrisgrieser/nvim-recorder",
+
+    opts = {
+      lessNotifications = true,
+    },
   },
 }

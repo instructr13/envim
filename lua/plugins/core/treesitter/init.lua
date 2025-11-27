@@ -4,6 +4,10 @@ return {
   {
     "nvim-treesitter/nvim-treesitter",
 
+    branch = "main",
+
+    lazy = false,
+
     build = ":TSUpdate",
 
     init = function()
@@ -73,6 +77,17 @@ return {
         vim.cmd("Treewalker SwapRight")
       end, "Treewalker (Swap Right)")
     end,
+
+    opts = {},
+  },
+  {
+    "nvim-treesitter/nvim-treesitter-textobjects",
+
+    branch = "main",
+
+    dependencies = { "nvim-treesitter/nvim-treesitter" },
+
+    lazy = false,
 
     opts = {},
   },
