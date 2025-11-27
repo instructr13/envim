@@ -6,6 +6,8 @@ function M.setup()
 
   require("base.core.bootstrap").setup()
 
+  require("base.colors").set_colorscheme()
+
   require("base.lsp").setup()
 
   require("base.editor").cd()
