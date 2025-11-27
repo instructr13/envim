@@ -12,25 +12,25 @@ return {
       term_colors = true,
       no_bold = true,
 
-      auto_integrations = true,
-
-      integrations = {
-        native_lsp = {
-          virtual_text = {
-            errors = {},
-            hints = {},
-            warnings = {},
-            information = {},
-            ok = {},
-          },
-          underlines = {
-            errors = { "undercurl" },
-            hints = { "underdashed" },
-            warnings = { "undercurl" },
-            information = { "underline" },
-          },
+      lsp_styles = {
+        virtual_text = {
+          errors = {},
+          hints = {},
+          warnings = {},
+          information = {},
+          ok = {},
+        },
+        underlines = {
+          errors = { "undercurl" },
+          hints = { "underdashed" },
+          warnings = { "undercurl" },
+          information = { "underline" },
         },
       },
+
+      auto_integrations = true,
+
+      integrations = {},
     },
   },
   {
