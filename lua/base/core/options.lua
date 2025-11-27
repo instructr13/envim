@@ -64,6 +64,7 @@ vim.opt.laststatus = 3
 
 vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 vim.opt.foldlevel = 9999
+vim.opt.foldlevelstart = 9999
 vim.opt.foldmethod = "expr"
 vim.opt.foldtext = ""
 
