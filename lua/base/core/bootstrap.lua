@@ -61,14 +61,29 @@ local function bootstrap_plugin_manager()
   end
 end
 
+local function has_plugins(modname)
+  local Util = require("lazy.core.util")
+
+  local modules = {}
+
+  Util.lsmod(modname, function(modname)
+    table.insert(modules, modname)
+  end)
+
+  return #modules > 0
+end
+
 local function configure_plugin_manager()
   local spec = {
     { import = "plugins.core" },
-    { import = "vendor_plugins" },
   }
 
   if not vim.g.vscode then
     table.insert(spec, { import = "plugins.normal" })
+  end
+
+  if has_plugins("vendor_plugins") then
+    table.insert(spec, { import = "vendor_plugins" })
   end
 
   require("lazy").setup({
