@@ -30,6 +30,9 @@ function M.treesitter()
       -- Treesitter
       "query",
 
+      -- tree-comment.nvim
+      "comment",
+
       -- puppeteer.nvim
       "python",
       "javascript",

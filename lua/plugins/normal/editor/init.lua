@@ -268,4 +268,20 @@ return {
       lastplace_open_folds = true,
     },
   },
+  {
+    "alexmozaidze/tree-comment.nvim",
+
+    lazy = true,
+
+    opts = {},
+  },
+  {
+    "folke/todo-comments.nvim",
+
+    dependencies = { "nvim-lua/plenary.nvim", "alexmozaidze/tree-comment.nvim" },
+
+    config = function()
+      C.todo_comment()
+    end,
+  },
 }

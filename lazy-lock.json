@@ -66,6 +66,7 @@
   "tiny-glimmer.nvim": { "branch": "main", "commit": "e83bab26665c2dd4153b8a24e172e674e7c6dee7" },
   "tiny-inline-diagnostic.nvim": { "branch": "main", "commit": "44b61d4cb9dd6c423793e6cb21dcc313d223e690" },
   "todo-comments.nvim": { "branch": "main", "commit": "31e3c38ce9b29781e4422fc0322eb0a21f4e8668" },
+  "tree-comment.nvim": { "branch": "main", "commit": "525a37cececcbd0e4dd1429b7c966302d2abcf64" },
   "treewalker.nvim": { "branch": "main", "commit": "fb93a6cd02a0445da7976ef5646b7fbd3c2d7ee3" },
   "ts-node-action": { "branch": "master", "commit": "6dad0b229b3d63cc7e36bf54a96683074af7c701" },
   "ultimate-autopair.nvim": { "branch": "v0.6", "commit": "72e160cb1ce8c0db2ac4315f77d97420a2f4223d" },
