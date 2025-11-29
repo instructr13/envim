@@ -35,7 +35,7 @@ local function bnext()
     return
   end
 
-  vim.cmd.bnext()
+  pcall(vim.cmd.bnext)
 end
 
 local function bprevious()
@@ -47,7 +47,7 @@ local function bprevious()
     return
   end
 
-  vim.cmd.bprev()
+  pcall(vim.cmd.bprev)
 end
 
 keymap("n", "<Tab>", bnext, "Next Buffer")
