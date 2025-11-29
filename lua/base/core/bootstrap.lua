@@ -1,5 +1,7 @@
 local fn, fs, uv = vim.fn, vim.fs, vim.uv
 
+local keymap = require("base.utils.keymap").keymap
+
 local data_dir = fn.stdpath("data")
 
 local plugin_manager_repo = "folke/lazy.nvim"
@@ -114,6 +116,8 @@ local function configure_plugin_manager()
       },
     },
   })
+
+  keymap("n", "<leader>P", "<cmd>Lazy<cr>", "Open plugin manager")
 end
 
 function M.setup()

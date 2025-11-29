@@ -83,6 +83,15 @@ return {
     opts = {},
   },
   {
+    "oribarilan/lensline.nvim",
+
+    version = "*",
+
+    event = { "LspAttach" },
+
+    opts = {},
+  },
+  {
     "saecki/live-rename.nvim",
 
     lazy = true,
