@@ -1,7 +1,6 @@
 local C = require("plugins.normal.editor.config")
 
 return {
-  "jghauser/mkdir.nvim",
   {
     "saghen/blink.cmp",
 

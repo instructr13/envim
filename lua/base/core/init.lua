@@ -2,6 +2,7 @@ local M = {}
 
 function M.setup()
   require("base.core.options")
+  require("base.editor.autocommand")
   require("base.editor.keymap")
 
   require("base.core.bootstrap").setup()

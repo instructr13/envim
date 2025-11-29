@@ -75,6 +75,7 @@ return {
 
       return {
         bt_ignore = { "nofile", "terminal" },
+        ft_ignore = { "oil" },
         relculright = true,
         segments = {
           { text = { " " } },
