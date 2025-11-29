@@ -340,16 +340,16 @@ return {
     },
   },
   {
-    "shellRaining/hlchunk.nvim",
+    "saghen/blink.indent",
 
     event = { "BufReadPre", "BufNewFile" },
 
     opts = {
-      chunk = {
-        enable = true,
+      static = {
+        char = "▏",
       },
-      indent = {
-        enable = true,
+      scope = {
+        char = "▏",
       },
     },
   },
