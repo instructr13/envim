@@ -169,16 +169,6 @@ return {
     },
   },
   {
-    "sphamba/smear-cursor.nvim",
-
-    cond = not vim.g.neovide,
-
-    opts = {
-      smear_between_buffers = false,
-      smear_insert_mode = false,
-    },
-  },
-  {
     "nvim-mini/mini.animate",
 
     opts = {
