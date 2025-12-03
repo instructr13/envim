@@ -1,22 +1,5 @@
 local M = {}
 
-local ufo_capabilities = {
-  textDocument = {
-    foldingRange = {
-      dynamicRegistration = false,
-      lineFoldingOnly = true,
-    },
-  },
-}
-
-local function make_capabilities()
-  local cap = vim.lsp.protocol.make_client_capabilities()
-
-  cap = vim.tbl_deep_extend("force", cap, ufo_capabilities)
-
-  return cap
-end
-
 local function setup_dianostic()
   local virt_lines_ns = vim.api.nvim_create_namespace("on_diagnostic_jump")
 
@@ -139,10 +122,6 @@ M.dianostic_icons = {
 
 function M.setup()
   setup_dianostic()
-
-  vim.lsp.config("*", {
-    capabilities = make_capabilities(),
-  })
 
   vim.api.nvim_create_autocmd("LspAttach", {
     group = vim.api.nvim_create_augroup("UserLspConfig", {}),
