@@ -43,6 +43,10 @@ local function on_attach(client, bufnr)
 
   local cap = client.server_capabilities
 
+  if not cap then
+    return
+  end
+
   if cap["renameProvider"] then
     keymap("grn", function()
       require("live-rename").rename({ insert = true, cursorpos = -1 })

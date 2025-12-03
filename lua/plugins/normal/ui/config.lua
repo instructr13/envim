@@ -175,7 +175,7 @@ function M.incline()
 
         if hints > 0 then
           table.insert(label, {
-            diagnostic_icons.error .. hints,
+            diagnostic_icons.hint .. hints,
             guifg = colors.diag_hint,
           })
 
