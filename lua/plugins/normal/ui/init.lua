@@ -293,10 +293,25 @@ return {
           },
           diagnostics = "nvim_lsp",
           diagnostics_indicator = function(count, level)
+            local diagnostic_config = vim.diagnostic.config()
+
+            local error_icon
+            local warn_icon
+
+            if diagnostic_config == nil then
+              error_icon = "E"
+              warn_icon = "W"
+            else
+              error_icon =
+                diagnostic_config.signs.text[vim.diagnostic.severity.ERROR]
+              warn_icon =
+                diagnostic_config.signs.text[vim.diagnostic.severity.WARN]
+            end
+
             if level:match("error") then
-              return " " .. count
+              return error_icon .. count
             elseif level:match("warning") then
-              return " " .. count
+              return warn_icon .. count
             end
 
             return ""
