@@ -56,13 +56,26 @@ function M.incline()
   local devicons = require("nvim-web-devicons")
   local utils = require("heirline.utils")
 
-  local diagnostic_icons = {
-    error = " ",
-    warn = " ",
-    info = " ",
-    hint = " ",
-    ok = " ",
-  }
+  local diagnostic_config = vim.diagnostic.config()
+
+  local error_icon
+  local warn_icon
+  local info_icon
+  local hint_icon
+
+  if diagnostic_config == nil then
+    error_icon = "E"
+    warn_icon = "W"
+    info_icon = "I"
+    hint_icon = "H"
+  else
+    error_icon = diagnostic_config.signs.text[vim.diagnostic.severity.ERROR]
+    warn_icon = diagnostic_config.signs.text[vim.diagnostic.severity.WARN]
+    info_icon = diagnostic_config.signs.text[vim.diagnostic.severity.INFO]
+    hint_icon = diagnostic_config.signs.text[vim.diagnostic.severity.HINT]
+  end
+
+  local ok_icon = " "
 
   local function to_hex(number)
     if number == nil then
@@ -117,7 +130,7 @@ function M.incline()
         local label = {}
 
         table.insert(label, {
-          diagnostic_icons.error .. errors,
+          error_icon .. errors,
           guifg = errors > 0 and colors.diag_error or colors.surface1,
         })
 
@@ -136,7 +149,7 @@ function M.incline()
         table.insert(label, { " " })
 
         table.insert(label, {
-          diagnostic_icons.warn .. warnings,
+          warn_icon .. warnings,
           guifg = errors > 0 and colors.diag_warn or colors.surface1,
         })
 
@@ -156,7 +169,7 @@ function M.incline()
 
         if info > 0 then
           table.insert(label, {
-            diagnostic_icons.info .. info,
+            info_icon .. info,
             guifg = colors.diag_info,
           })
 
@@ -175,7 +188,7 @@ function M.incline()
 
         if hints > 0 then
           table.insert(label, {
-            diagnostic_icons.hint .. hints,
+            hint_icon .. hints,
             guifg = colors.diag_hint,
           })
 
@@ -193,7 +206,7 @@ function M.incline()
         end
 
         table.insert(label, {
-          diagnostic_icons.ok,
+          ok_icon,
           guifg = (ok and vim.bo.buftype == "") and colors.green
             or colors.surface1,
         })
