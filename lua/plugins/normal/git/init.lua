@@ -129,12 +129,7 @@ return {
     end,
 
     opts = {
-      telescope_sorter = function()
-        return nil
-      end,
-
       integrations = {
-        --telescope = true,
         diffview = true,
       },
     },
