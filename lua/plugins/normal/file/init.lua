@@ -9,8 +9,6 @@ return {
     opts = function()
       local keymap = require("base.utils.keymap").keymap
 
-      keymap("n", [[\]], "<cmd>Oil<cr>", "Open current directory")
-
       function _G.get_oil_winbar()
         local bufnr = vim.api.nvim_win_get_buf(vim.g.statusline_winid)
         local dir = require("oil").get_current_dir(bufnr)
@@ -137,5 +135,14 @@ return {
     dependencies = { "stevearc/oil.nvim" },
 
     opts = {},
+  },
+  {
+    "maelwalser/oil-bar.nvim",
+
+    dependencies = { "stevearc/oil.nvim" },
+
+    opts = {
+      keymap = [[\]],
+    },
   },
 }
