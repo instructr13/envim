@@ -11,6 +11,18 @@ return {
     dependencies = {
       "rafamadriz/friendly-snippets",
       {
+        "L3MON4D3/LuaSnip",
+
+        version = "v2.*",
+
+        build = "make install_jsregexp",
+
+        config = function()
+          require("luasnip.loaders.from_vscode").lazy_load()
+          require("luasnip.loaders.from_snipmate").lazy_load()
+        end,
+      },
+      {
         "xzbdmw/colorful-menu.nvim",
 
         opts = {},
@@ -36,6 +48,57 @@ return {
         ["<C-d>"] = { "scroll_documentation_down", "fallback" },
         ["<C-b>"] = {},
         ["<C-f>"] = {},
+
+        ["<A-1>"] = {
+          function(cmp)
+            cmp.accept({ index = 1 })
+          end,
+        },
+        ["<A-2>"] = {
+          function(cmp)
+            cmp.accept({ index = 2 })
+          end,
+        },
+        ["<A-3>"] = {
+          function(cmp)
+            cmp.accept({ index = 3 })
+          end,
+        },
+        ["<A-4>"] = {
+          function(cmp)
+            cmp.accept({ index = 4 })
+          end,
+        },
+        ["<A-5>"] = {
+          function(cmp)
+            cmp.accept({ index = 5 })
+          end,
+        },
+        ["<A-6>"] = {
+          function(cmp)
+            cmp.accept({ index = 6 })
+          end,
+        },
+        ["<A-7>"] = {
+          function(cmp)
+            cmp.accept({ index = 7 })
+          end,
+        },
+        ["<A-8>"] = {
+          function(cmp)
+            cmp.accept({ index = 8 })
+          end,
+        },
+        ["<A-9>"] = {
+          function(cmp)
+            cmp.accept({ index = 9 })
+          end,
+        },
+        ["<A-0>"] = {
+          function(cmp)
+            cmp.accept({ index = 10 })
+          end,
+        },
       },
       completion = {
         list = {
@@ -135,21 +198,44 @@ return {
           show_documentation = true,
         },
       },
+      snippets = {
+        preset = "luasnip",
+      },
       sources = {
-        default = function(ctx)
-          if vim.bo.filetype == "lua" then
+        default = function(_)
+          local success, node = pcall(vim.treesitter.get_node)
+
+          if
+            success
+            and node
+            and vim.tbl_contains(
+              { "comment", "line_comment", "block_comment" },
+              node:type()
+            )
+          then
+            return { "buffer", "lsp", "path" }
+          elseif vim.bo.filetype == "lua" then
             return { "lazydev", "lsp", "path", "snippets" }
           else
             return { "lsp", "path", "snippets" }
           end
         end,
         providers = {
-          path = {
+          snippets = {
             opts = {
-              get_cwd = function(_)
-                return vim.fn.getcwd()
-              end,
+              prefer_doc_trig = true,
+              use_label_description = true,
             },
+            should_show_items = function(ctx)
+              if
+                #vim.lsp.get_clients({ bufnr = vim.api.nvim_get_current_buf() })
+                == 0
+              then
+                return false
+              end
+
+              return ctx.trigger.initial_kind ~= "trigger_character"
+            end,
           },
           lazydev = {
             name = "LazyDev",
