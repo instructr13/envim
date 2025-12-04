@@ -167,6 +167,9 @@ end, "Delete character without yanking")
 
 keymap("v", "x", '"_x', "Delete character without yanking")
 
+keymap({ "n", "v" }, "c", '"_c', "Change character without yanking")
+keymap({ "n", "v" }, "C", '"_C', "Change character without yanking")
+
 keymap("x", "<", "<gv", "Shift left and reselect")
 keymap("x", ">", ">gv", "Shift left and reselect")
 
