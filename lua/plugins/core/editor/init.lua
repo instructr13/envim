@@ -12,6 +12,34 @@ return {
   },
   {
     "nvim-mini/mini.ai",
+
+    version = "*",
+
+    opts = function()
+      local ik = require("base.utils.keymap").omit(
+        "append",
+        { "x", "o" },
+        "ij",
+        { remap = true }
+      )
+
+      local ak = require("base.utils.keymap").omit(
+        "append",
+        { "x", "o" },
+        "aj",
+        { remap = true }
+      )
+
+      ik("[", "i?「<cr>」<cr>")
+      ak("[", "a?「<cr>」<cr>")
+
+      ik("<", "i?＜<cr>＞<cr>")
+      ak("<", "a?＜<cr>＞<cr>")
+      ik("{", "i?｛<cr>｝<cr>")
+      ak("{", "a?｛<cr>｝<cr>")
+
+      return {}
+    end,
   },
   {
     "monaqa/dial.nvim",
