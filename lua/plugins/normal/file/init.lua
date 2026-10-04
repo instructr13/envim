@@ -7,20 +7,6 @@ return {
     lazy = false,
 
     opts = function()
-      local keymap = require("base.utils.keymap").keymap
-
-      function _G.get_oil_winbar()
-        local bufnr = vim.api.nvim_win_get_buf(vim.g.statusline_winid)
-        local dir = require("oil").get_current_dir(bufnr)
-
-        if dir then
-          return vim.fn.fnamemodify(dir, ":~")
-        else
-          -- If there is no current directory (e.g. over ssh), just show the buffer name
-          return vim.api.nvim_buf_get_name(0)
-        end
-      end
-
       local function parse_output(proc)
         local result = proc:wait()
         local ret = {}
@@ -42,6 +28,8 @@ return {
           __index = function(self, key)
             local ignore_proc = vim.system({
               "git",
+              "-c",
+              "core.quotepath=off",
               "ls-files",
               "--ignored",
               "--exclude-standard",
@@ -51,13 +39,17 @@ return {
               cwd = key,
               text = true,
             })
-            local tracked_proc = vim.system(
-              { "git", "ls-tree", "HEAD", "--name-only" },
-              {
-                cwd = key,
-                text = true,
-              }
-            )
+            local tracked_proc = vim.system({
+              "git",
+              "-c",
+              "core.quotepath=off",
+              "ls-tree",
+              "HEAD",
+              "--name-only",
+            }, {
+              cwd = key,
+              text = true,
+            })
             local ret = {
               ignored = parse_output(ignore_proc),
               tracked = parse_output(tracked_proc),
@@ -70,6 +62,7 @@ return {
       end
 
       local git_status = new_git_status()
+      local detail = false
 
       -- Clear git status cache on refresh
       local refresh = require("oil.actions").refresh
@@ -106,7 +99,7 @@ return {
         },
         win_options = {
           number = false,
-          winbar = "%!v:lua.get_oil_winbar()",
+          relativenumber = false,
           signcolumn = "yes:2",
         },
         view_options = {
@@ -131,6 +124,10 @@ return {
   },
   {
     "refractalize/oil-git-status.nvim",
+
+    lazy = true,
+
+    ft = "oil",
 
     dependencies = { "stevearc/oil.nvim" },
 

@@ -1,6 +1,9 @@
+# Machine-local configuration (see lua/base/vendor.lua)
 lua/vendor/*
 !lua/vendor/.gitkeep
 
-lua/vendor_plugins/*
-!lua/vendor_plugins/.gitkeep
+# Lockfile of vendor plugins
+nvim-pack-lock.json
+
+.direnv
 

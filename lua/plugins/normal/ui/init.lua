@@ -2,6 +2,7 @@ local C = require("plugins.normal.ui.config")
 
 return {
   {
+    -- Colorscheme; colors are exposed to other modules through base.colors
     "catppuccin/nvim",
 
     name = "catppuccin",
@@ -46,22 +47,39 @@ return {
 
     opts = function()
       return {
-        colors = require("catppuccin.palettes").get_palette(),
+        colors = vim.tbl_values(require("base.colors").palette()),
       }
     end,
   },
   {
-    "j-hui/fidget.nvim",
+    -- vim.notify, LSP progress, vim.ui.input/select, and editor messages on
+    -- top of ui2 (enabled in base.core.options)
+    "dont-be-evil-company/juu.nvim",
+
+    lazy = false,
+
+    priority = 900,
 
     opts = {
-      progress = {
-        ignore_done_already = true,
-        ignore_empty_message = true,
-      },
-      notification = {
-        override_vim_notify = true,
+      -- The cmdline is handled by tiny-cmdline.nvim
+      cmdline = false,
+      select = {
+        backend = { "fzf_lua", "builtin" },
       },
     },
+  },
+  {
+    -- Centered floating cmdline on top of ui2
+    "rachartier/tiny-cmdline.nvim",
+
+    lazy = false,
+
+    config = function()
+      require("tiny-cmdline").setup({
+        -- Keep blink.cmp's cmdline menu attached to the floating window
+        on_reposition = require("tiny-cmdline").adapters.blink,
+      })
+    end,
   },
   {
     "luukvbaal/statuscol.nvim",
@@ -123,54 +141,11 @@ return {
     end,
   },
   {
-    "onsails/lspkind.nvim",
+    "nvim-mini/mini.animate",
 
     lazy = true,
 
-    opts = {
-      symbol_map = {
-        Array = " ",
-        Boolean = " 󰨙 ",
-        Class = " 󰯳 ",
-        Color = " ",
-        Collapsed = " > ",
-        Constant = " 󰯱 ",
-        Control = "  ",
-        Constructor = "  ",
-        Enum = " 󰯹 ",
-        EnumMember = " ",
-        Event = " ",
-        Field = " ",
-        File = " ",
-        Folder = "  ",
-        Function = " ",
-        Interface = " 󰰅 ",
-        Key = "  ",
-        Keyword = " ",
-        Method = " 󰰑 ",
-        Module = " ",
-        Namespace = " 󰰔 ",
-        Null = "  ",
-        Number = " ",
-        Object = " 󰲟 ",
-        Operator = " ",
-        Package = " 󰰚 ",
-        Property = " 󰲽 ",
-        Reference = " 󰰠 ",
-        Snippet = " ",
-        String = " ",
-        Struct = " 󰰣 ",
-        Text = " ",
-        TypeParameter = " 󰰦 ",
-        Unit = " ",
-        Value = " ",
-
-        Copilot = " ",
-      },
-    },
-  },
-  {
-    "nvim-mini/mini.animate",
+    event = "VeryLazy",
 
     opts = {
       cursor = { enable = false },
@@ -178,39 +153,7 @@ return {
     },
   },
   {
-    "folke/noice.nvim",
-
-    event = "VeryLazy",
-
-    dependencies = { "MunifTanjim/nui.nvim" },
-
-    opts = {
-      lsp = {
-        -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
-        override = {
-          ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
-          ["vim.lsp.util.stylize_markdown"] = true,
-        },
-        progress = {
-          enabled = false,
-        },
-        signature = {
-          enabled = false,
-        },
-      },
-      notify = {
-        enabled = false,
-      },
-      presets = {
-        bottom_search = true,
-        command_palette = true,
-        long_message_to_split = true,
-        inc_rename = false,
-        lsp_doc_border = false,
-      },
-    },
-  },
-  {
+    -- Diagnostics summary, shown right below dropbar's winbar
     "b0o/incline.nvim",
 
     lazy = true,
@@ -261,7 +204,17 @@ return {
 
     opts = function()
       -- Set indicator color
-      vim.cmd.hi({ "TabLineSel guibg=#ed8796", bang = true })
+      local function set_indicator_hl()
+        vim.api.nvim_set_hl(0, "TabLineSel", {
+          bg = require("base.colors").palette().red,
+        })
+      end
+
+      require("base.colors").on_change(
+        "bufferline_hl",
+        set_indicator_hl,
+        { run = true }
+      )
 
       local keymap = require("base.utils.keymap").keymap
 
@@ -269,23 +222,19 @@ return {
         require("bufferline").pick()
       end, "Pick Buffer")
 
+      keymap(
+        "n",
+        "<leader>bo",
+        "<cmd>BufferLineCloseOthers<cr>",
+        "Close other buffers"
+      )
+      keymap("n", "<leader>bp", "<cmd>BufferLineTogglePin<cr>", "Pin buffer")
+
       return {
-        highlights = require("catppuccin.special.bufferline").get_theme({
-          styles = {},
-          custom = {
-            all = {
-              fill = {
-                bg = {
-                  attribute = "bg",
-                  highlight = "StatusLine",
-                },
-              },
-            },
-          },
-        }),
+        highlights = require("base.colors").bufferline_highlights(),
         options = {
           close_command = function(bufnr)
-            require("mini.bufremove").delete(bufnr, true)
+            require("mini.bufremove").delete(bufnr)
           end,
           right_mouse_command = "vertical sbuffer %d",
           indicator = {
@@ -293,25 +242,13 @@ return {
           },
           diagnostics = "nvim_lsp",
           diagnostics_indicator = function(count, level)
-            local diagnostic_config = vim.diagnostic.config()
-
-            local error_icon
-            local warn_icon
-
-            if diagnostic_config == nil then
-              error_icon = "E"
-              warn_icon = "W"
-            else
-              error_icon =
-                diagnostic_config.signs.text[vim.diagnostic.severity.ERROR]
-              warn_icon =
-                diagnostic_config.signs.text[vim.diagnostic.severity.WARN]
-            end
+            local text = vim.diagnostic.config().signs.text
+            local severity = vim.diagnostic.severity
 
             if level:match("error") then
-              return error_icon .. count
+              return text[severity.ERROR] .. count
             elseif level:match("warning") then
-              return warn_icon .. count
+              return text[severity.WARN] .. count
             end
 
             return ""
@@ -343,6 +280,33 @@ return {
 
     opts = {
       preset = "helix",
+
+      -- <leader> is split by concern; keep this in sync with CLAUDE.md
+      spec = {
+        { "<leader>b", group = "Buffer" },
+        { "<leader>c", group = "Code", mode = { "n", "x" } },
+        { "<leader>f", group = "Find" },
+        { "<leader>g", group = "Git", mode = { "n", "x" } },
+        { "<leader>l", group = "LSP" },
+        { "<leader>m", group = "Markdown" },
+        { "<leader>p", group = "Plugins" },
+        { "<leader>s", group = "Search & replace", mode = { "n", "x" } },
+        { "<leader>t", group = "Toggle" },
+        { "<leader>u", group = "Undo history" },
+        { "<leader>w", group = "Window" },
+        { "<leader>x", group = "Lists (quickfix)" },
+        { "<leader><tab>", group = "Tab" },
+        -- Buffer jumps are noise in the popup
+        { "<leader>1", hidden = true },
+        { "<leader>2", hidden = true },
+        { "<leader>3", hidden = true },
+        { "<leader>4", hidden = true },
+        { "<leader>5", hidden = true },
+        { "<leader>6", hidden = true },
+        { "<leader>7", hidden = true },
+        { "<leader>8", hidden = true },
+        { "<leader>9", hidden = true },
+      },
     },
   },
   {
@@ -372,27 +336,22 @@ return {
 
     keys = {
       {
-        "<leader>t",
-        "",
-        desc = "Undo tree",
-      },
-      {
-        "<leader>tt",
+        "<leader>uu",
         "<cmd>TimeMachineToggle<cr>",
         desc = "Toggle tree",
       },
       {
-        "<leader>tx",
-        "<cmd>TimeMachinePurgeCurrent<cr>",
-        desc = "Purge current",
+        "<leader>ux",
+        "<cmd>TimeMachinePurgeBuffer<cr>",
+        desc = "Purge current buffer",
       },
       {
-        "<leader>tX",
+        "<leader>uX",
         "<cmd>TimeMachinePurgeAll<cr>",
         desc = "Purge all",
       },
       {
-        "<leader>tl",
+        "<leader>ul",
         "<cmd>TimeMachineLogShow<cr>",
         desc = "Show log",
       },
@@ -403,8 +362,10 @@ return {
   {
     "lewis6991/satellite.nvim",
 
+    event = { "BufReadPost", "BufNewFile" },
+
     opts = {
-      excluded_filetypes = { "neo-tree" },
+      excluded_filetypes = { "oil", "help", "qf", "fzf", "grug-far" },
     },
   },
   {
@@ -417,6 +378,140 @@ return {
     opts = {},
   },
   {
+    -- LSP / Treesitter / path breadcrumbs in the winbar
+    "Bekaboo/dropbar.nvim",
+
+    event = { "BufReadPost", "BufNewFile", "FileType" },
+
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+
+    keys = {
+      {
+        "<leader>;",
+        function()
+          require("dropbar.api").pick()
+        end,
+        desc = "Pick symbol in winbar",
+      },
+    },
+
+    opts = function()
+      return C.dropbar()
+    end,
+
+    config = function(_, opts)
+      require("dropbar").setup(opts)
+      C.set_dropbar_hl()
+
+      -- After dropbar has redefined its own groups
+      require("base.colors").on_change(
+        "dropbar_hl",
+        C.set_dropbar_hl,
+        { schedule = true }
+      )
+    end,
+  },
+  {
+    "OXY2DEV/foldtext.nvim",
+
+    event = "VeryLazy",
+
+    -- Defaults already use Nerd Font icons (conventional-commit kinds)
+    opts = {},
+  },
+  {
+    -- Show whitespace inside the Visual selection
+    "mcauley-penney/visual-whitespace.nvim",
+
+    event = "ModeChanged *:[vV\22]",
+
+    opts = {
+      match_types = {
+        lead = true,
+        trail = true,
+      },
+      -- Same dot as 'listchars' trail
+      list_chars = {
+        space = "•",
+        lead = "•",
+        trail = "•",
+      },
+      -- No end-of-line marker
+      fileformat_chars = { unix = "", mac = "", dos = "" },
+    },
+
+    init = function()
+      -- Whitespace in the selection: dimmed like 'listchars' (NonText) on the
+      -- selection background. Always-visible trailing whitespace uses the
+      -- same look.
+      local function set_hl()
+        local hl = require("base.colors").hl
+
+        vim.api.nvim_set_hl(0, "VisualNonText", {
+          fg = hl("NonText").fg,
+          bg = hl("Visual").bg,
+        })
+        vim.api.nvim_set_hl(0, "Whitespace", { link = "VisualNonText" })
+      end
+
+      -- Also runs after the plugin's own (default) VisualNonText definition
+      require("base.colors").on_change("whitespace_hl", set_hl, { run = true })
+    end,
+  },
+  {
+    -- Mapped to K in base.lsp
+    "Fildo7525/pretty_hover",
+
+    lazy = true,
+
+    opts = {},
+  },
+  {
+    -- Search count ([2/5]) at the end of the current match's line
+    "kevinhwang91/nvim-hlslens",
+
+    event = "CmdlineEnter",
+
+    init = function()
+      -- Defined at startup so tiny-glimmer (VeryLazy) wraps these mappings
+      local function search_key(key)
+        vim.keymap.set("n", key, function()
+          local ok, err = pcall(
+            vim.cmd.normal,
+            { args = { vim.v.count1 .. key .. "zv" }, bang = true }
+          )
+
+          -- E486 and friends: report like the built-in command, not as a
+          -- Lua error
+          if not ok then
+            vim.api.nvim_echo(
+              { { (err:gsub("^Vim[^:]*:", "")), "ErrorMsg" } },
+              true,
+              {}
+            )
+
+            return
+          end
+
+          require("hlslens").start()
+        end, { desc = "Search " .. key })
+      end
+
+      for _, key in ipairs({ "n", "N", "*", "#", "g*", "g#" }) do
+        search_key(key)
+      end
+    end,
+
+    opts = function()
+      return vim.tbl_extend("error", C.hlslens(), {
+        enable_incsearch = false,
+        calm_down = true,
+        nearest_only = true,
+        nearest_float_when = "never",
+      })
+    end,
+  },
+  {
     "nacro90/numb.nvim",
 
     lazy = true,
@@ -424,5 +519,58 @@ return {
     event = { "CmdlineEnter" },
 
     opts = {},
+  },
+  {
+    "rachartier/tiny-glimmer.nvim",
+
+    lazy = true,
+
+    event = { "VeryLazy" },
+
+    priority = 10,
+
+    opts = {
+      overwrite = {
+        -- Wraps the n / N / * / # mappings set up for nvim-hlslens
+        search = {
+          enabled = true,
+        },
+        undo = {
+          enabled = true,
+        },
+        redo = {
+          enabled = true,
+        },
+      },
+    },
+  },
+  {
+    "mawkler/modicator.nvim",
+
+    event = "ModeChanged",
+
+    opts = function()
+      -- Same colors as the statusline's mode block
+      local function set_hl()
+        local c = require("base.colors").mode_colors()
+
+        for name, color in pairs({
+          Normal = c.normal,
+          Insert = c.insert,
+          Visual = c.visual,
+          Select = c.visual,
+          Replace = c.replace,
+          Command = c.command,
+          Terminal = c.terminal,
+          TerminalNormal = c.terminal,
+        }) do
+          vim.api.nvim_set_hl(0, name .. "Mode", { fg = color })
+        end
+      end
+
+      require("base.colors").on_change("modicator_hl", set_hl, { run = true })
+
+      return { show_warnings = false }
+    end,
   },
 }

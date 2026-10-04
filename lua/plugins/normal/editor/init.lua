@@ -1,5 +1,11 @@
 local C = require("plugins.normal.editor.config")
 
+local comment_nodes = {
+  comment = true,
+  line_comment = true,
+  block_comment = true,
+}
+
 return {
   {
     "saghen/blink.cmp",
@@ -9,19 +15,8 @@ return {
     event = { "InsertEnter", "CmdlineEnter" },
 
     dependencies = {
+      -- Loaded by blink's built-in (vim.snippet) snippet source
       "rafamadriz/friendly-snippets",
-      {
-        "L3MON4D3/LuaSnip",
-
-        version = "v2.*",
-
-        build = "make install_jsregexp",
-
-        config = function()
-          require("luasnip.loaders.from_vscode").lazy_load()
-          require("luasnip.loaders.from_snipmate").lazy_load()
-        end,
-      },
       {
         "xzbdmw/colorful-menu.nvim",
 
@@ -38,7 +33,7 @@ return {
         },
         completion = { menu = { auto_show = true } },
       },
-      keymap = {
+      keymap = vim.tbl_extend("error", C.blink_accept_keys(), {
         preset = "enter",
 
         -- For tabout.nvim
@@ -46,68 +41,29 @@ return {
 
         ["<C-u>"] = { "scroll_documentation_up", "fallback" },
         ["<C-d>"] = { "scroll_documentation_down", "fallback" },
+
+        -- Mouse wheel over the menu moves the selection, over the docs scrolls
+        ["<ScrollWheelDown>"] = { C.blink_mouse_scroll(1), "fallback" },
+        ["<ScrollWheelUp>"] = { C.blink_mouse_scroll(-1), "fallback" },
         ["<C-b>"] = {},
         ["<C-f>"] = {},
-
-        ["<A-1>"] = {
-          function(cmp)
-            cmp.accept({ index = 1 })
-          end,
-        },
-        ["<A-2>"] = {
-          function(cmp)
-            cmp.accept({ index = 2 })
-          end,
-        },
-        ["<A-3>"] = {
-          function(cmp)
-            cmp.accept({ index = 3 })
-          end,
-        },
-        ["<A-4>"] = {
-          function(cmp)
-            cmp.accept({ index = 4 })
-          end,
-        },
-        ["<A-5>"] = {
-          function(cmp)
-            cmp.accept({ index = 5 })
-          end,
-        },
-        ["<A-6>"] = {
-          function(cmp)
-            cmp.accept({ index = 6 })
-          end,
-        },
-        ["<A-7>"] = {
-          function(cmp)
-            cmp.accept({ index = 7 })
-          end,
-        },
-        ["<A-8>"] = {
-          function(cmp)
-            cmp.accept({ index = 8 })
-          end,
-        },
-        ["<A-9>"] = {
-          function(cmp)
-            cmp.accept({ index = 9 })
-          end,
-        },
-        ["<A-0>"] = {
-          function(cmp)
-            cmp.accept({ index = 10 })
-          end,
-        },
-      },
+      }),
       completion = {
         list = {
           selection = { preselect = true, auto_insert = false },
         },
-        documentation = { auto_show = true, auto_show_delay_ms = 500 },
+        documentation = {
+          auto_show = true,
+          auto_show_delay_ms = 500,
+          window = { scrollbar = true },
+        },
         ghost_text = { enabled = true },
         menu = {
           border = "none",
+          scrollbar = true,
+          -- Lets the mouse wheel scroll as far as possible before the
+          -- selection has to follow
+          scrolloff = 0,
           draw = {
             padding = { 0, 1 },
             columns = {
@@ -127,40 +83,10 @@ return {
               },
               kind_icon = {
                 text = function(ctx)
-                  local icon = ctx.kind_icon
-
-                  if vim.tbl_contains({ "Path" }, ctx.source_name) then
-                    local dev_icon, _ =
-                      require("nvim-web-devicons").get_icon(ctx.label)
-
-                    if dev_icon then
-                      icon = dev_icon
-                    end
-                  else
-                    icon = require("lspkind").symbolic(ctx.kind, {
-                      mode = "symbol",
-                    })
-                  end
-
-                  return " " .. icon .. ctx.icon_gap .. " "
+                  return " " .. C.blink_kind_icon(ctx) .. " "
                 end,
-
-                -- Optionally, use the highlight groups from nvim-web-devicons
-                -- You can also add the same function for `kind.highlight` if you want to
-                -- keep the highlight groups in sync with the icons.
                 highlight = function(ctx)
-                  local hl = ctx.kind_hl
-
-                  if vim.tbl_contains({ "Path" }, ctx.source_name) then
-                    local dev_icon, dev_hl =
-                      require("nvim-web-devicons").get_icon(ctx.label)
-
-                    if dev_icon then
-                      hl = dev_hl
-                    end
-                  end
-
-                  return hl
+                  return select(2, C.blink_kind_icon(ctx))
                 end,
               },
             },
@@ -198,21 +124,11 @@ return {
           show_documentation = true,
         },
       },
-      snippets = {
-        preset = "luasnip",
-      },
       sources = {
         default = function(_)
           local success, node = pcall(vim.treesitter.get_node)
 
-          if
-            success
-            and node
-            and vim.tbl_contains(
-              { "comment", "line_comment", "block_comment" },
-              node:type()
-            )
-          then
+          if success and node and comment_nodes[node:type()] then
             return { "buffer", "lsp", "path" }
           elseif vim.bo.filetype == "lua" then
             return { "lazydev", "lsp", "path", "snippets" }
@@ -222,10 +138,6 @@ return {
         end,
         providers = {
           snippets = {
-            opts = {
-              prefer_doc_trig = true,
-              use_label_description = true,
-            },
             should_show_items = function(ctx)
               if
                 #vim.lsp.get_clients({ bufnr = vim.api.nvim_get_current_buf() })
@@ -276,9 +188,22 @@ return {
   },
   {
     "RRethy/vim-illuminate",
+
+    event = { "BufReadPost", "BufNewFile" },
+
+    config = function()
+      require("illuminate").configure({
+        -- The treesitter provider needs nvim-treesitter's master branch
+        providers = { "lsp", "regex" },
+      })
+    end,
   },
   {
     "andymass/vim-matchup",
+
+    lazy = true,
+
+    event = { "BufReadPost", "BufNewFile" },
 
     init = function()
       C.matchup_init()
@@ -300,16 +225,6 @@ return {
     },
   },
   {
-    "qwavies/smart-backspace.nvim",
-
-    event = { "InsertEnter", "CmdlineEnter" },
-
-    opts = {
-      enabled = true,
-      silent = true,
-    },
-  },
-  {
     "xzbdmw/clasp.nvim",
 
     lazy = true,
@@ -323,34 +238,36 @@ return {
   {
     "abecodes/tabout.nvim",
 
+    lazy = true,
+
+    event = "InsertEnter",
+
     opts = {
       enable_backwards = false,
       completion = false,
     },
   },
   {
-    -- colorcolumn
-    "Bekaboo/deadcolumn.nvim",
+    -- Re-indent linewise pastes to fit the destination
+    "nemanjamalesija/smart-paste.nvim",
 
-    event = { "CursorMoved" },
+    event = "VeryLazy",
 
-    opts = {
-      "visible",
-      "cursor",
-    },
+    opts = {},
   },
   {
-    "ethanholz/nvim-lastplace",
+    -- Preview :norm / :g and friends like 'inccommand'
+    "smjonas/live-command.nvim",
+
+    main = "live-command",
+
+    event = "CmdlineEnter",
 
     opts = {
-      lastplace_ignore_buftype = { "quickfix", "nofile", "help" },
-      lastplace_ignore_filetype = {
-        "gitcommit",
-        "gitrebase",
-        "svn",
-        "hgcommit",
+      commands = {
+        Norm = { cmd = "norm" },
+        G = { cmd = "g" },
       },
-      lastplace_open_folds = true,
     },
   },
   {
@@ -362,6 +279,8 @@ return {
   },
   {
     "folke/todo-comments.nvim",
+
+    event = { "BufReadPost", "BufNewFile" },
 
     dependencies = { "nvim-lua/plenary.nvim", "alexmozaidze/tree-comment.nvim" },
 

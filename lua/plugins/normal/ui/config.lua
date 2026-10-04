@@ -30,222 +30,298 @@ local function bi_fsize(size)
   return { size = round(size * 2 ^ -20 * 100) / 100, postfix = "MiB" }
 end
 
-local function get_diagnostic_object(severity)
-  local diagnostics = vim.diagnostic.get(0, { severity = severity })
-  local count = #diagnostics
-  local first_lnum = count > 0 and diagnostics[1].lnum + 1 or 0
+-- First diagnostic line per severity, and counts
+local function diagnostic_summary(buf)
+  local counts = vim.diagnostic.count(buf)
+  local first = {}
 
-  return count, first_lnum
+  for _, d in ipairs(vim.diagnostic.get(buf)) do
+    if not first[d.severity] or d.lnum < first[d.severity] then
+      first[d.severity] = d.lnum
+    end
+  end
+
+  return counts, first
 end
 
-local function create_arrow(lnum)
-  local row = api.nvim_win_get_cursor(fn.win_getid())[1]
-
-  local arrow = ""
+local function create_arrow(win, lnum)
+  local row = api.nvim_win_get_cursor(win)[1]
 
   if row > lnum then
-    arrow = ""
+    return ""
   elseif row == lnum then
-    arrow = ""
+    return ""
   end
 
-  return arrow
+  return ""
 end
 
+-- Floating diagnostics summary under the winbar (dropbar.nvim)
 function M.incline()
-  local devicons = require("nvim-web-devicons")
-  local utils = require("heirline.utils")
-
-  local diagnostic_config = vim.diagnostic.config()
-
-  local error_icon
-  local warn_icon
-  local info_icon
-  local hint_icon
-
-  if diagnostic_config == nil then
-    error_icon = "E"
-    warn_icon = "W"
-    info_icon = "I"
-    hint_icon = "H"
-  else
-    error_icon = diagnostic_config.signs.text[vim.diagnostic.severity.ERROR]
-    warn_icon = diagnostic_config.signs.text[vim.diagnostic.severity.WARN]
-    info_icon = diagnostic_config.signs.text[vim.diagnostic.severity.INFO]
-    hint_icon = diagnostic_config.signs.text[vim.diagnostic.severity.HINT]
-  end
-
-  local ok_icon = " "
+  local severity = vim.diagnostic.severity
+  local icons = vim.diagnostic.config().signs.text
 
   local function to_hex(number)
     if number == nil then
-      return "#ffffff"
+      return "NONE"
     end
 
     return ("#%06x"):format(number)
   end
 
-  require("incline").setup({
-    render = function(props)
-      local palette = require("catppuccin.palettes").get_palette()
+  local colors
 
-      local colors = vim.tbl_extend("error", palette, {
-        diag_error = to_hex(utils.get_highlight("DiagnosticError").fg),
-        diag_dark_error = to_hex(
-          utils.get_highlight("DiagnosticVirtualTextError").bg
-        ),
-        diag_warn = to_hex(utils.get_highlight("DiagnosticWarn").fg),
-        diag_dark_warn = to_hex(
-          utils.get_highlight("DiagnosticVirtualTextWarn").bg
-        ),
-        diag_info = to_hex(utils.get_highlight("DiagnosticInfo").fg),
-        diag_dark_info = to_hex(
-          utils.get_highlight("DiagnosticVirtualTextInfo").bg
-        ),
-        diag_hint = to_hex(utils.get_highlight("DiagnosticHint").fg),
-        diag_dark_hint = to_hex(
-          utils.get_highlight("DiagnosticVirtualTextHint").bg
-        ),
+  local function update_colors()
+    local palette = require("base.colors").palette()
+
+    local function hl(name, attr)
+      return to_hex(require("base.colors").hl(name)[attr])
+    end
+
+    colors = {
+      inactive = palette.faint,
+      ok = palette.green,
+      [severity.ERROR] = {
+        hl("DiagnosticError", "fg"),
+        hl("DiagnosticVirtualTextError", "bg"),
+      },
+      [severity.WARN] = {
+        hl("DiagnosticWarn", "fg"),
+        hl("DiagnosticVirtualTextWarn", "bg"),
+      },
+      [severity.INFO] = {
+        hl("DiagnosticInfo", "fg"),
+        hl("DiagnosticVirtualTextInfo", "bg"),
+      },
+      [severity.HINT] = {
+        hl("DiagnosticHint", "fg"),
+        hl("DiagnosticVirtualTextHint", "bg"),
+      },
+    }
+  end
+
+  require("base.colors").on_change(
+    "incline_colors",
+    update_colors,
+    { run = true }
+  )
+
+  require("incline").setup({
+    window = {
+      placement = { horizontal = "right", vertical = "top" },
+      margin = { horizontal = 1, vertical = 0 },
+      padding = 1,
+      zindex = 40,
+    },
+    hide = {
+      cursorline = true,
+    },
+    ignore = {
+      buftypes = function(_, buftype)
+        return buftype ~= ""
+      end,
+      unlisted_buffers = true,
+    },
+    render = function(props)
+      local counts, first = diagnostic_summary(props.buf)
+      local label = {}
+
+      for _, s in ipairs({
+        severity.ERROR,
+        severity.WARN,
+        severity.INFO,
+        severity.HINT,
+      }) do
+        local count = counts[s] or 0
+
+        -- Errors and warnings are always shown, info and hints only if any
+        if count > 0 or s <= severity.WARN then
+          table.insert(label, {
+            icons[s] .. count,
+            guifg = count > 0 and colors[s][1] or colors.inactive,
+          })
+
+          if count > 0 then
+            local lnum = first[s] + 1
+
+            table.insert(label, {
+              create_arrow(props.win, lnum),
+              guifg = colors[s][2],
+            })
+            table.insert(label, { tostring(lnum), guifg = colors[s][1] })
+          end
+
+          table.insert(label, { " " })
+        end
+      end
+
+      local ok = next(counts) == nil
+
+      table.insert(label, {
+        require("base.constants.icons").diagnostics.Ok .. " ",
+        guifg = ok and colors.ok or colors.inactive,
       })
 
-      local filename =
-        vim.fn.fnamemodify(vim.api.nvim_buf_get_name(props.buf), ":t")
-      if filename == "" then
-        filename = "[No Name]"
-      end
-      local ft_icon, ft_color = devicons.get_icon_color(filename)
-
-      local function get_diagnostic_label()
-        local errors, error_lnum =
-          get_diagnostic_object(vim.diagnostic.severity.ERROR)
-        local warnings, warn_lnum =
-          get_diagnostic_object(vim.diagnostic.severity.WARN)
-        local info, info_lnum =
-          get_diagnostic_object(vim.diagnostic.severity.INFO)
-        local hints, hint_lnum =
-          get_diagnostic_object(vim.diagnostic.severity.HINT)
-
-        local ok = errors + warnings + info + hints == 0
-
-        local label = {}
-
-        table.insert(label, {
-          error_icon .. errors,
-          guifg = errors > 0 and colors.diag_error or colors.surface1,
-        })
-
-        if errors > 0 then
-          table.insert(label, {
-            create_arrow(error_lnum),
-            guifg = colors.diag_dark_error,
-          })
-
-          table.insert(label, {
-            error_lnum,
-            guifg = colors.diag_error,
-          })
-        end
-
-        table.insert(label, { " " })
-
-        table.insert(label, {
-          warn_icon .. warnings,
-          guifg = errors > 0 and colors.diag_warn or colors.surface1,
-        })
-
-        if warnings > 0 then
-          table.insert(label, {
-            create_arrow(warn_lnum),
-            guifg = colors.diag_dark_warn,
-          })
-
-          table.insert(label, {
-            warn_lnum,
-            guifg = colors.diag_warn,
-          })
-        end
-
-        table.insert(label, { " " })
-
-        if info > 0 then
-          table.insert(label, {
-            info_icon .. info,
-            guifg = colors.diag_info,
-          })
-
-          table.insert(label, {
-            create_arrow(info_lnum),
-            guifg = colors.diag_dark_info,
-          })
-
-          table.insert(label, {
-            info_lnum,
-            guifg = colors.diag_info,
-          })
-
-          table.insert(label, { " " })
-        end
-
-        if hints > 0 then
-          table.insert(label, {
-            hint_icon .. hints,
-            guifg = colors.diag_hint,
-          })
-
-          table.insert(label, {
-            create_arrow(hint_lnum),
-            guifg = colors.diag_dark_hint,
-          })
-
-          table.insert(label, {
-            hint_lnum,
-            guifg = colors.diag_hint,
-          })
-
-          table.insert(label, { " " })
-        end
-
-        table.insert(label, {
-          ok_icon,
-          guifg = (ok and vim.bo.buftype == "") and colors.green
-            or colors.surface1,
-        })
-
-        table.insert(label, { " │ ", guifg = colors.surface0 })
-
-        return label
-      end
-
-      return {
-        { get_diagnostic_label() },
-        { (ft_icon or "") .. " ", guifg = ft_color, guibg = "none" },
-        {
-          filename .. " ",
-          gui = vim.bo[props.buf].modified and "italic" or "normal",
-        },
-      }
+      return label
     end,
   })
+end
+
+-- Winbar on nvim-treesitter-context's background, with symbol names colored
+-- like their kind icons
+function M.set_dropbar_hl()
+  local hl = require("base.colors").hl
+
+  local bg = hl("TreesitterContext").bg or hl("NormalFloat").bg
+
+  api.nvim_set_hl(0, "WinBar", { fg = hl("Normal").fg, bg = bg })
+  api.nvim_set_hl(0, "WinBarNC", { fg = hl("Comment").fg, bg = bg })
+  api.nvim_set_hl(0, "DropBarFileName", { bold = true })
+  api.nvim_set_hl(0, "DropBarFileNameModified", {
+    fg = hl("DiagnosticWarn").fg,
+    bold = true,
+    italic = true,
+  })
+
+  for name in pairs(api.nvim_get_hl(0, {})) do
+    local kind = name:match("^DropBarIconKind(.+)$")
+
+    if kind and not kind:match("NC$") then
+      api.nvim_set_hl(0, "DropBarKind" .. kind, { link = name })
+    end
+  end
+end
+
+function M.dropbar()
+  local sources = require("dropbar.sources")
+  local utils = require("dropbar.utils")
+
+  -- Highlight the file name, and mark modified buffers
+  local path = {
+    get_symbols = function(buf, win, cursor)
+      local symbols = sources.path.get_symbols(buf, win, cursor)
+      local file = symbols[#symbols]
+
+      if file and vim.bo[buf].buftype == "" then
+        file.name_hl = "DropBarFileName"
+
+        if vim.bo[buf].modified then
+          file.name = file.name .. " [+]"
+          file.name_hl = "DropBarFileNameModified"
+        end
+      end
+
+      return symbols
+    end,
+  }
+
+  local symbols = {}
+
+  for kind, icon in pairs(require("base.constants.icons").kinds) do
+    -- Keep dropbar's own folder icon for paths
+    if kind ~= "Folder" then
+      symbols[kind] = icon .. " "
+    end
+  end
+
+  return {
+    icons = {
+      kinds = { symbols = symbols },
+    },
+    bar = {
+      enable = function(buf, win, _)
+        buf = vim._resolve_bufnr(buf)
+
+        if
+          not api.nvim_buf_is_valid(buf)
+          or not api.nvim_win_is_valid(win)
+          or fn.win_gettype(win) ~= ""
+          or vim.wo[win].winbar ~= ""
+          or vim.bo[buf].filetype == "help"
+        then
+          return false
+        end
+
+        if
+          api.nvim_buf_get_offset(buf, api.nvim_buf_line_count(buf))
+          > 1024 * 1024
+        then
+          return false
+        end
+
+        return vim.bo[buf].filetype == "oil"
+          or vim.bo[buf].buftype == "terminal"
+          or vim.bo[buf].filetype == "markdown"
+          or vim.treesitter.get_parser(buf, nil, { error = false }) ~= nil
+          or not vim.tbl_isempty(vim.lsp.get_clients({
+            bufnr = buf,
+            method = "textDocument/documentSymbol",
+          }))
+      end,
+      sources = function(buf, _)
+        if vim.bo[buf].buftype == "terminal" then
+          return { sources.terminal }
+        end
+
+        if vim.bo[buf].filetype == "oil" then
+          return { path }
+        end
+
+        if vim.bo[buf].filetype == "markdown" then
+          return { path, sources.markdown }
+        end
+
+        return {
+          path,
+          utils.source.fallback({ sources.lsp, sources.treesitter }),
+        }
+      end,
+    },
+    sources = {
+      path = {
+        relative_to = function(buf, win)
+          local name = api.nvim_buf_get_name(buf)
+
+          local ok, cwd = pcall(fn.getcwd, win)
+
+          cwd = ok and cwd or fn.getcwd()
+
+          -- oil:// buffers: relative to cwd when inside it, else the full path
+          if vim.startswith(name, "oil://") then
+            local dir = name:gsub("^%S+://", "", 1)
+
+            if vim.fs.relpath(cwd, dir) then
+              return cwd
+            end
+
+            while dir ~= vim.fs.dirname(dir) do
+              dir = vim.fs.dirname(dir)
+            end
+
+            return dir
+          end
+
+          return cwd
+        end,
+      },
+    },
+  }
 end
 
 local function setup_colors()
   local lib = require("heirline-components.all")
   local utils = require("heirline.utils")
-  local palette = require("catppuccin.palettes").get_palette()
 
-  local colors = vim.tbl_extend("error", palette, {
-    bright_bg = palette.surface0,
-    bright_fg = palette.text,
+  local colors = vim.tbl_extend("error", require("base.colors").palette(), {
     dark_red = utils.get_highlight("DiffDelete").bg,
-    gray = palette.subtext1,
-    orange = palette.peach,
-    purple = palette.mauve,
-    cyan = palette.sapphire,
   })
 
-  colors = vim.tbl_extend("force", colors, lib.hl.get_colors())
-
-  return colors
+  return vim.tbl_extend(
+    "force",
+    colors,
+    lib.hl.get_colors(),
+    require("base.colors").mode_colors()
+  )
 end
 
 function M.statusline()
@@ -257,24 +333,21 @@ function M.statusline()
   lib.init.subscribe_to_events()
   heirline.load_colors(setup_colors())
 
-  api.nvim_create_autocmd("ColorScheme", {
-    group = api.nvim_create_augroup("Heirline", { clear = true }),
-    callback = function()
-      utils.on_colorscheme(setup_colors)
-    end,
-  })
+  require("base.colors").on_change("Heirline", function()
+    utils.on_colorscheme(setup_colors)
+  end)
 
   local statusline = {
     hl = {
-      fg = "gray",
-      bg = "mantle",
+      fg = "subtle",
+      bg = "bar_bg",
     },
   }
 
   -- Utilities
   local Align = { provider = "%=" }
   local Space = { provider = " " }
-  local Separator = { provider = " │ ", hl = { fg = "surface0" } }
+  local Separator = { provider = " │ ", hl = { fg = "border" } }
 
   local Left = {}
 
@@ -290,7 +363,7 @@ function M.statusline()
 
       provider = " ",
       hl = function()
-        local fg = vim.bo.modified and "green" or "surface1"
+        local fg = vim.bo.modified and "green" or "faint"
 
         return { fg = fg }
       end,
@@ -301,7 +374,7 @@ function M.statusline()
       provider = "",
       hl = function()
         local fg = (not vim.bo.modifiable or vim.bo.readonly) and "orange"
-          or "surface1"
+          or "faint"
 
         return { fg = fg }
       end,
@@ -363,7 +436,7 @@ function M.statusline()
     {
       provider = "  ",
 
-      hl = { fg = "overlay0" },
+      hl = { fg = "muted" },
     },
     {
       provider = function(self)
@@ -385,7 +458,7 @@ function M.statusline()
     {
       provider = " of ",
 
-      hl = { fg = "overlay0" },
+      hl = { fg = "muted" },
     },
     {
       provider = function(self)
@@ -425,7 +498,7 @@ function M.statusline()
       {
         provider = " in ",
 
-        hl = { fg = "overlay0" },
+        hl = { fg = "muted" },
       },
       {
         provider = function(self)
@@ -437,7 +510,7 @@ function M.statusline()
           return "file" .. (#self.buffers > 1 and "s" or "")
         end,
 
-        hl = { fg = "overlay0" },
+        hl = { fg = "muted" },
       },
     },
   }
@@ -514,7 +587,21 @@ function M.statusline()
 
   local Center = {}
 
-  Center = utils.insert(Center, lib.component.cmd_info())
+  -- The search count is shown at the match by nvim-hlslens
+  Center = utils.insert(
+    Center,
+    lib.component.cmd_info({
+      search_count = false,
+      surround = {
+        condition = function()
+          local condition = require("heirline-components.core.condition")
+
+          return condition.is_macro_recording()
+            or condition.is_statusline_showcmd()
+        end,
+      },
+    })
+  )
 
   local WorkDirIcon = {
     provider = " ",
@@ -527,7 +614,7 @@ function M.statusline()
       self.indicator = (fn.haslocaldir(0) == 1 and " (L)" or "") .. " "
       self.cwd = fn.fnamemodify(fn.getcwd(0), ":~")
     end,
-    hl = { fg = "gray", bold = false },
+    hl = { fg = "subtle", bold = false },
 
     flexible = 1,
 
@@ -565,7 +652,7 @@ function M.statusline()
   local IndentBlock = {
     init = function(self)
       self.use_spaces = vim.bo.expandtab
-      self.indent_size = vim.bo.tabstop
+      self.indent_size = vim.bo.expandtab and fn.shiftwidth() or vim.bo.tabstop
     end,
 
     update = "OptionSet",
@@ -604,11 +691,20 @@ function M.statusline()
     utils.insert(IndentBlock, Separator, IndentIcon, IndentIndicator)
   Right = utils.insert(Right, IndentBlock)
 
+  api.nvim_create_autocmd({ "BufReadPost", "BufWritePost" }, {
+    group = api.nvim_create_augroup("heirline_filesize", { clear = true }),
+    callback = function(e)
+      vim.b[e.buf].file_size = fn.getfsize(api.nvim_buf_get_name(e.buf))
+    end,
+  })
+
   local FileSize = {
     init = function(self)
-      local size = fn.getfsize(api.nvim_buf_get_name(0))
+      if vim.b.file_size == nil then
+        vim.b.file_size = fn.getfsize(api.nvim_buf_get_name(0))
+      end
 
-      self.fsize = bi_fsize(size)
+      self.fsize = bi_fsize(vim.b.file_size)
     end,
 
     condition = function()
@@ -626,17 +722,49 @@ function M.statusline()
         return self.fsize.postfix
       end,
 
-      hl = { fg = "surface1" },
+      hl = { fg = "faint" },
     },
   }
 
-  Right = utils.insert(
-    Right,
-    FileSize,
-    lib.component.file_encoding({
-      file_format = false,
-    })
-  )
+  local default_fileformat = fn.has("win32") == 1 and "dos" or "unix"
+  local line_endings = { unix = "LF", dos = "CRLF", mac = "CR" }
+
+  -- Shown only when it differs from the platform's usual UTF-8 / line ending
+  local FileEncoding = {
+    condition = function()
+      return vim.bo.buftype == ""
+    end,
+
+    init = function(self)
+      local enc = vim.bo.fileencoding ~= "" and vim.bo.fileencoding
+        or vim.o.encoding
+      local labels = {}
+
+      if enc ~= "utf-8" then
+        table.insert(labels, enc:upper())
+      end
+
+      if vim.bo.bomb then
+        table.insert(labels, "BOM")
+      end
+
+      if vim.bo.fileformat ~= default_fileformat then
+        table.insert(labels, line_endings[vim.bo.fileformat])
+      end
+
+      self.label = table.concat(labels, " ")
+    end,
+
+    {
+      provider = function(self)
+        return self.label ~= "" and " " .. self.label or ""
+      end,
+
+      hl = { fg = "yellow" },
+    },
+  }
+
+  Right = utils.insert(Right, FileSize, FileEncoding)
 
   local Ruler = {
     update = { "CursorMoved", "TextChanged" },
@@ -644,7 +772,7 @@ function M.statusline()
     {
       provider = " ",
 
-      hl = { fg = "surface1" },
+      hl = { fg = "faint" },
     },
     {
       provider = "%2c",
@@ -652,7 +780,7 @@ function M.statusline()
     {
       provider = ", ",
 
-      hl = { fg = "surface1" },
+      hl = { fg = "faint" },
     },
     {
       provider = "%3L",
@@ -660,12 +788,12 @@ function M.statusline()
     {
       provider = "LOC",
 
-      hl = { fg = "surface1" },
+      hl = { fg = "faint" },
     },
     {
       provider = ", ",
 
-      hl = { fg = "surface1" },
+      hl = { fg = "faint" },
     },
     {
       provider = "%3p",
@@ -673,7 +801,7 @@ function M.statusline()
     {
       provider = "%%",
 
-      hl = { fg = "surface1" },
+      hl = { fg = "faint" },
     },
   }
 
@@ -703,6 +831,43 @@ function M.statusline()
   heirline.setup({
     statusline = statusline,
   })
+end
+
+-- Search count at the match as a rounded pill: accent text on a faint tint of
+-- the accent, like noice's popups
+---@return table # nvim-hlslens options
+function M.hlslens()
+  local colors = require("base.colors")
+
+  colors.on_change("hlslens_hl", function()
+    local p = colors.palette()
+    local base = colors.hl("Normal").bg or p.bar_bg
+
+    local function pill(name, accent, bold)
+      local bg = colors.blend(base, accent, 0.2)
+
+      api.nvim_set_hl(0, name, { fg = accent, bg = bg, bold = bold })
+      api.nvim_set_hl(0, name .. "Edge", { fg = bg })
+    end
+
+    pill("HlSearchLensNear", p.blue, true)
+    pill("HlSearchLens", p.muted, false)
+  end, { run = true })
+
+  return {
+    override_lens = function(render, posList, nearest, idx)
+      local lnum, col = unpack(posList[idx])
+      local group = nearest and "HlSearchLensNear" or "HlSearchLens"
+      local count = nearest and ("%d/%d"):format(idx, #posList) or idx
+
+      render.setVirt(0, lnum - 1, col - 1, {
+        { " " },
+        { "\u{e0b6}", group .. "Edge" },
+        { (" \u{ea6d} %s "):format(count), group },
+        { "\u{e0b4}", group .. "Edge" },
+      }, nearest)
+    end,
+  }
 end
 
 return M

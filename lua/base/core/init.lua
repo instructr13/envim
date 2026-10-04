@@ -9,6 +9,10 @@ function M.setup()
 
   require("base.colors").set_colorscheme()
 
+  if not vim.g.vscode then
+    require("base.editor.column").setup()
+  end
+
   require("base.lsp").setup()
 
   require("base.editor").cd()

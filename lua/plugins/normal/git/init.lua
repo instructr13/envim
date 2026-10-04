@@ -12,7 +12,7 @@ return {
         local gs = package.loaded.gitsigns
         local presets = require("base.utils.keymap.presets")
 
-        local leader_visual_keymap = presets.leader({ "n", "v" }, "g", {
+        local leader_visual_keymap = presets.leader("x", "g", {
           buffer = bufnr,
           silent = true,
         })
@@ -46,16 +46,22 @@ return {
         end, "Previous Hunk")
 
         -- Actions
+        local function selection()
+          return { vim.fn.line("."), vim.fn.line("v") }
+        end
+
+        -- stage_hunk toggles, so it also unstages
+        leader_keymap("s", gs.stage_hunk, "Stage / Unstage Hunk")
+        leader_keymap("r", gs.reset_hunk, "Reset Hunk")
         leader_visual_keymap("s", function()
-          vim.cmd("Gitsigns stage_hunk")
-        end, "Stage Hunk")
+          gs.stage_hunk(selection())
+        end, "Stage / Unstage Lines")
         leader_visual_keymap("r", function()
-          vim.cmd("Gitsigns reset_hunk")
-        end, "Unstage Hunk")
+          gs.reset_hunk(selection())
+        end, "Reset Lines")
 
         leader_keymap("S", gs.stage_buffer, "Stage Buffer")
-        leader_keymap("u", gs.undo_stage_hunk, "Undo Stage Hunk")
-        leader_keymap("R", gs.reset_buffer, "Unstage Buffer")
+        leader_keymap("R", gs.reset_buffer, "Reset Buffer")
         leader_keymap("p", gs.preview_hunk, "Preview Hunk")
         leader_keymap("B", function()
           gs.blame_line({
@@ -72,6 +78,10 @@ return {
           gs.diffthis("~")
         end, "Diff Current Buffer")
         leader_keymap("t", gs.toggle_deleted, "Toggle Deleted")
+        leader_keymap("b", gs.blame, "Blame Buffer")
+        leader_keymap("q", function()
+          gs.setqflist("all")
+        end, "Hunks to Quickfix")
 
         -- Text object
         require("base.utils.keymap").keymap(
@@ -82,17 +92,16 @@ return {
           end,
           "Select Hunk",
           {
+            buffer = bufnr,
             silent = true,
           }
         )
       end,
       watch_gitdir = {
-        interval = 1000,
         follow_files = true,
       },
       diff_opts = {
         algorithm = "histogram",
-        internal = true,
       },
       attach_to_untracked = true,
       current_line_blame = true,
@@ -113,7 +122,16 @@ return {
 
     lazy = true,
 
-    cmd = { "DiffviewOpen" },
+    cmd = { "DiffviewOpen", "DiffviewFileHistory" },
+
+    keys = {
+      { "<leader>gv", "<cmd>DiffviewOpen<cr>", desc = "Diff view" },
+      {
+        "<leader>gh",
+        "<cmd>DiffviewFileHistory %<cr>",
+        desc = "File history",
+      },
+    },
   },
   {
     "NeogitOrg/neogit",
@@ -126,6 +144,8 @@ return {
       local keymap = require("base.utils.keymap").keymap
 
       keymap("n", "<leader>gg", "<cmd>Neogit<cr>", "Open Neogit")
+      keymap("n", "<leader>gl", "<cmd>Neogit log<cr>", "Git log")
+      keymap("n", "<leader>gc", "<cmd>Neogit commit<cr>", "Git commit")
     end,
 
     opts = {

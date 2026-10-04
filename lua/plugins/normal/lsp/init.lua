@@ -2,33 +2,55 @@ local C = require("plugins.normal.lsp.config")
 
 return {
   {
+    -- Adds Mason's bin directory to $PATH; servers are enabled by
+    -- base.lsp.auto_enable
     "mason-org/mason.nvim",
+
+    -- Must load at startup to put its bin directory on $PATH
+    lazy = false,
+
+    keys = {
+      { "<leader>pm", "<cmd>Mason<cr>", desc = "Tool installer (Mason)" },
+    },
 
     opts = {},
   },
   {
-    "williamboman/mason-lspconfig.nvim",
+    -- Only used for its per-server fixes (mason-lspconfig.lsp.*)
+    "mason-org/mason-lspconfig.nvim",
 
     lazy = true,
 
     event = { "VeryLazy" },
 
-    dependencies = {
-      "williamboman/mason.nvim",
-      {
-        "neovim/nvim-lspconfig",
+    dependencies = { "mason-org/mason.nvim" },
 
-        config = function()
-          local keymap = require("base.utils.keymap").keymap
-
-          keymap("n", "<leader>lI", function()
-            vim.cmd("LspInfo")
-          end, "LSP Information", { silent = true })
-        end,
-      },
+    opts = {
+      automatic_enable = false,
     },
+  },
+  {
+    -- Provides lsp/*.lua configs for vim.lsp.config
+    "neovim/nvim-lspconfig",
 
-    opts = {},
+    lazy = false,
+
+    config = function()
+      local keymap = require("base.utils.keymap").keymap
+
+      keymap(
+        "n",
+        "<leader>lI",
+        "<cmd>checkhealth vim.lsp<cr>",
+        "LSP Information"
+      )
+      keymap("n", "<leader>lr", "<cmd>lsp restart<cr>", "Restart LSP")
+      keymap("n", "<leader>ls", "<cmd>lsp stop<cr>", "Stop LSP")
+      keymap("n", "<leader>ll", function()
+        vim.cmd.edit(vim.lsp.log.get_filename())
+      end, "LSP log")
+      keymap("n", "<leader>lF", "<cmd>ConformInfo<cr>", "Formatter info")
+    end,
   },
   {
     "stevearc/conform.nvim",
@@ -43,18 +65,40 @@ return {
       C.conform_init()
     end,
 
-    opts = {
-      formatters_by_ft = {
-        lua = { "stylua" },
-      },
-      default_format_opts = {
-        lsp_format = "fallback",
-      },
-      format_on_save = function(bufnr)
-        return C.conform_format_on_save(bufnr)
-      end,
-      notify_no_formatters = false,
-    },
+    opts = function()
+      return {
+        -- Built from installed tools; filetypes without a formatter fall
+        -- back to LSP formatting
+        formatters_by_ft = C.formatters_by_ft(),
+        default_format_opts = {
+          lsp_format = "fallback",
+          stop_after_first = true,
+        },
+        format_on_save = function(bufnr)
+          return C.conform_format_on_save(bufnr)
+        end,
+        notify_no_formatters = false,
+      }
+    end,
+
+    config = function(_, opts)
+      require("conform").setup(opts)
+
+      require("base.tools").on_install(function()
+        require("conform").formatters_by_ft = C.formatters_by_ft()
+      end)
+    end,
+  },
+  {
+    "mfussenegger/nvim-lint",
+
+    lazy = true,
+
+    event = { "BufReadPost", "BufNewFile", "BufWritePost" },
+
+    config = function()
+      C.lint_setup()
+    end,
   },
   {
     "rachartier/tiny-inline-diagnostic.nvim",
@@ -95,6 +139,31 @@ return {
     "saecki/live-rename.nvim",
 
     lazy = true,
+
+    opts = {},
+  },
+  {
+    "rachartier/tiny-code-action.nvim",
+
+    lazy = true,
+
+    dependencies = { "nvim-lua/plenary.nvim" },
+
+    opts = {
+      picker = "buffer",
+    },
+  },
+  {
+    "dnlhc/glance.nvim",
+
+    cmd = { "Glance" },
+
+    opts = {},
+  },
+  {
+    "chrisgrieser/nvim-lsp-endhints",
+
+    event = { "LspAttach" },
 
     opts = {},
   },

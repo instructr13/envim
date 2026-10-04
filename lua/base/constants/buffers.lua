@@ -1,9 +1,6 @@
 local M = {}
 
 local quit_with_q = {
-  buftypes = {
-    "quickfix",
-  },
   filetypes = {
     -- Code from LazyVim
     "PlenaryTestPopup",
@@ -12,32 +9,22 @@ local quit_with_q = {
     "man",
     "notify",
     "query",
-    "spectre_panel",
     "startuptime",
-    "tsplayground",
-    "neotest-output",
     "checkhealth",
-    "neotest-summary",
-    "neotest-output-panel",
+    "grug-far",
 
     -- vim-dadbod
     "dbout",
+
+    -- quickfix
+    "qf",
   },
 }
 
-local ignore_buf_change_filetypes = vim.tbl_extend("force", quit_with_q, {
-  -- alpha-nvim
-  "alpha",
-
-  -- nvim-dap
-  "dbui",
-
-  -- neo-tree.nvim
-  "neo-tree",
-
-  -- quickfix
-  "qf",
-})
+local ignore_buf_change_filetypes =
+  vim.list_extend(vim.deepcopy(quit_with_q.filetypes), {
+    "oil",
+  })
 
 M.window = {
   quit_with_q = quit_with_q,

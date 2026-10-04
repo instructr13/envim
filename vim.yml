@@ -1,0 +1,8 @@
+---
+# Neovim's Lua runtime: LuaJIT (Lua 5.1 + bit, \u{} escapes) with `vim`
+base: lua51
+globals:
+  vim:
+    any: true
+  bit:
+    any: true

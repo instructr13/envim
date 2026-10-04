@@ -7,7 +7,7 @@ return {
   {
     "m-demare/hlargs.nvim",
 
-    lazy = false,
+    event = { "BufReadPost", "BufNewFile" },
 
     opts = {},
   },

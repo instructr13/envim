@@ -10,10 +10,6 @@ return {
 
     build = ":TSUpdate",
 
-    init = function()
-      C.treesitter_init()
-    end,
-
     config = function()
       C.treesitter()
     end,
@@ -45,37 +41,15 @@ return {
     init = function()
       local keymap = require("base.utils.keymap").keymap
 
-      keymap({ "n", "v" }, "<C-h>", function()
-        vim.cmd("Treewalker Left")
-      end, "Treewalker (Left)")
+      for key, dir in pairs({ h = "Left", j = "Down", k = "Up", l = "Right" }) do
+        keymap({ "n", "x" }, "<C-" .. key .. ">", function()
+          vim.cmd.Treewalker(dir)
+        end, "Treewalker (" .. dir .. ")")
 
-      keymap({ "n", "v" }, "<C-j>", function()
-        vim.cmd("Treewalker Down")
-      end, "Treewalker (Down)")
-
-      keymap({ "n", "v" }, "<C-k>", function()
-        vim.cmd("Treewalker Up")
-      end, "Treewalker (Up)")
-
-      keymap({ "n", "v" }, "<C-l>", function()
-        vim.cmd("Treewalker Right")
-      end, "Treewalker (Right)")
-
-      keymap("n", "<C-S-h>", function()
-        vim.cmd("Treewalker SwapLeft")
-      end, "Treewalker (Swap Left)")
-
-      keymap("n", "<C-S-j>", function()
-        vim.cmd("Treewalker SwapDown")
-      end, "Treewalker (Swap Down)")
-
-      keymap("n", "<C-S-k>", function()
-        vim.cmd("Treewalker SwapUp")
-      end, "Treewalker (Swap Up)")
-
-      keymap("n", "<C-S-l>", function()
-        vim.cmd("Treewalker SwapRight")
-      end, "Treewalker (Swap Right)")
+        keymap("n", "<C-S-" .. key .. ">", function()
+          vim.cmd.Treewalker("Swap" .. dir)
+        end, "Treewalker (Swap " .. dir .. ")")
+      end
     end,
 
     opts = {},
@@ -85,10 +59,26 @@ return {
 
     branch = "main",
 
-    dependencies = { "nvim-treesitter/nvim-treesitter" },
+    event = "VeryLazy",
 
-    lazy = false,
+    opts = {
+      move = { set_jumps = true },
+    },
 
-    opts = {},
+    config = function(_, opts)
+      require("nvim-treesitter-textobjects").setup(opts)
+
+      C.textobjects()
+    end,
+  },
+  {
+    "nvim-treesitter/nvim-treesitter-context",
+
+    event = "VeryLazy",
+
+    opts = {
+      max_lines = 3,
+      multiline_threshold = 1,
+    },
   },
 }

@@ -4,6 +4,9 @@ return {
 
     event = "VeryLazy",
 
-    opts = {},
+    opts = {
+      -- foldtext.nvim renders fold lines
+      foldtext = { enabled = false },
+    },
   },
 }

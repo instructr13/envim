@@ -1,6 +1,8 @@
 local M = {}
 
-local function setup_dianostic()
+local function setup_diagnostic()
+  local icons = require("base.constants.icons").diagnostics
+
   local virt_lines_ns = vim.api.nvim_create_namespace("on_diagnostic_jump")
 
   local function on_jump(diagnostic, bufnr)
@@ -19,10 +21,10 @@ local function setup_dianostic()
     jump = { on_jump = on_jump },
     signs = {
       text = {
-        [vim.diagnostic.severity.ERROR] = " ",
-        [vim.diagnostic.severity.WARN] = " ",
-        [vim.diagnostic.severity.INFO] = " ",
-        [vim.diagnostic.severity.HINT] = " ",
+        [vim.diagnostic.severity.ERROR] = icons.Error .. " ",
+        [vim.diagnostic.severity.WARN] = icons.Warn .. " ",
+        [vim.diagnostic.severity.INFO] = icons.Info .. " ",
+        [vim.diagnostic.severity.HINT] = icons.Hint .. " ",
       },
       numhl = {
         [vim.diagnostic.severity.ERROR] = "DiagnosticError",
@@ -31,65 +33,92 @@ local function setup_dianostic()
         [vim.diagnostic.severity.HINT] = "DiagnosticHint",
       },
     },
-    -- virtual_text = {
-    --   spacing = 4,
-    --   source = "if_many",
-    --   virt_text_pos = "eol_right_align",
-    --   prefix = function(diagnostic)
-    --     for severity, icon in pairs(icons) do
-    --       if
-    --         diagnostic.severity == vim.diagnostic.severity[severity:upper()]
-    --       then
-    --         return icon .. " "
-    --       end
-    --     end
-    --   end,
-    -- },
   })
+end
+
+local function enable_features()
+  vim.lsp.inlay_hint.enable()
+  vim.lsp.linked_editing_range.enable()
+  vim.lsp.on_type_formatting.enable()
+  vim.lsp.inline_completion.enable()
 end
 
 ---@param client vim.lsp.Client
 ---@param bufnr integer
 local function on_attach(client, bufnr)
+  local set = require("base.utils.keymap").keymap
   local keymap =
     require("base.utils.keymap").omit("append", "n", "", { buffer = bufnr })
 
-  local cap = client.server_capabilities
+  -- Prefer LSP folding over Treesitter folding when available
+  if client:supports_method("textDocument/foldingRange", bufnr) then
+    vim.b[bufnr].lsp_folding = true
 
-  if not cap then
-    return
+    require("base.editor").set_foldexpr(bufnr, "v:lua.vim.lsp.foldexpr()")
   end
 
-  if cap["renameProvider"] then
+  if client:supports_method("textDocument/hover", bufnr) then
+    keymap("K", function()
+      require("pretty_hover").hover()
+    end, "Hover")
+  end
+
+  if client:supports_method("textDocument/rename", bufnr) then
     keymap("grn", function()
       require("live-rename").rename({ insert = true, cursorpos = -1 })
     end, "Rename")
   end
 
-  if cap["inlayHintProvider"] then
-    vim.lsp.inlay_hint.enable(true, { bufnr })
+  if client:supports_method("textDocument/codeAction", bufnr) then
+    set({ "n", "x" }, "gra", function()
+      require("tiny-code-action").code_action({})
+    end, "Code Action", { buffer = bufnr })
   end
 
-  if cap["definitionProvider"] or cap["referencesProvider"] then
+  if client:supports_method("textDocument/references", bufnr) then
+    keymap("grr", "<cmd>Glance references<cr>", "Peek References")
+  end
+
+  if client:supports_method("textDocument/implementation", bufnr) then
+    keymap("gri", "<cmd>Glance implementations<cr>", "Peek Implementations")
+  end
+
+  if client:supports_method("textDocument/typeDefinition", bufnr) then
+    keymap("grt", "<cmd>Glance type_definitions<cr>", "Peek Type Definition")
+  end
+
+  if
+    client:supports_method("textDocument/definition", bufnr)
+    or client:supports_method("textDocument/references", bufnr)
+  then
     keymap("gd", function()
       require("definition-or-references").definition_or_references()
     end, "Go To Definition")
 
     keymap("<C-LeftMouse>", function()
-      vim.api.nvim_feedkeys(
-        vim.api.nvim_replace_termcodes("<LeftMouse>", false, false, true),
-        "in",
-        false
+      local pos = vim.fn.getmousepos()
+
+      -- Clicks outside of a window (or past its text) have no position
+      if pos.winid == 0 or pos.line == 0 then
+        return
+      end
+
+      vim.api.nvim_set_current_win(pos.winid)
+      pcall(
+        vim.api.nvim_win_set_cursor,
+        pos.winid,
+        { pos.line, math.max(pos.column - 1, 0) }
       )
 
-      -- defer to let nvim refresh to get correct position
-      vim.defer_fn(function()
-        require("definition-or-references").definition_or_references()
-      end, 0)
-    end)
+      require("definition-or-references").definition_or_references()
+    end, "Go To Definition (click)")
   end
 
-  if cap["referencesProvider"] then
+  if client:supports_method("textDocument/declaration", bufnr) then
+    keymap("gD", vim.lsp.buf.declaration, "Go To Declaration")
+  end
+
+  if client:supports_method("textDocument/documentHighlight", bufnr) then
     keymap("<a-n>", function()
       require("illuminate").next_reference({ wrap = true })
     end, "Next Reference")
@@ -99,61 +128,68 @@ local function on_attach(client, bufnr)
     end, "Previous Reference")
   end
 
-  if cap["declarationProvider"] then
-    keymap("gD", function()
-      vim.lsp.buf.declaration()
-    end, "Go To Declaration")
-  end
-
-  if cap["typeDefinitionProvider"] then
-    local function type_definition()
-      local ok, trouble = pcall(require, "trouble")
-
-      if not ok then
-        vim.lsp.buf.type_definition()
-
-        return
+  if client:supports_method("textDocument/inlineCompletion", bufnr) then
+    set("i", "<M-l>", function()
+      if not vim.lsp.inline_completion.get() then
+        return "<M-l>"
       end
-
-      trouble.toggle("lsp_type_definitions")
-    end
-
-    keymap("go", function()
-      type_definition()
-    end, "Go To Type Definition")
-  end
-
-  if cap["implementationProvider"] then
-    keymap("gI", function()
-      vim.lsp.buf.implementation()
-    end, "Go To Implementation")
+    end, "Accept inline completion", { buffer = bufnr, expr = true })
   end
 end
 
-M.dianostic_icons = {
-  Error = "",
-  Warn = "",
-  Info = "",
-  Hint = "",
-}
+-- Without a folding server, `vim.lsp.foldexpr()` would leave the window with
+-- no folds at all: hand folding back to Treesitter
+---@param bufnr integer
+---@param client_id integer
+local function restore_folding(bufnr, client_id)
+  if not vim.b[bufnr].lsp_folding then
+    return
+  end
+
+  for _, c in ipairs(vim.lsp.get_clients({ bufnr = bufnr })) do
+    if
+      c.id ~= client_id
+      and c:supports_method("textDocument/foldingRange", bufnr)
+    then
+      return
+    end
+  end
+
+  vim.b[bufnr].lsp_folding = nil
+
+  local lang = vim.treesitter.language.get_lang(vim.bo[bufnr].filetype)
+  local ok, folds = pcall(vim.treesitter.query.get, lang or "", "folds")
+  local expr = ok and folds and "v:lua.vim.treesitter.foldexpr()"
+
+  require("base.editor").set_foldexpr(bufnr, expr or nil)
+end
 
 function M.setup()
-  setup_dianostic()
+  setup_diagnostic()
+  enable_features()
 
   vim.api.nvim_create_autocmd("LspAttach", {
-    group = vim.api.nvim_create_augroup("UserLspConfig", {}),
+    group = vim.api.nvim_create_augroup("UserLspConfig", { clear = true }),
     callback = function(e)
       local client = vim.lsp.get_client_by_id(e.data.client_id)
 
-      if client == nil then
-        return
+      if client then
+        on_attach(client, e.buf)
       end
-
-      local bufnr = e.buf
-
-      on_attach(client, bufnr)
     end,
   })
+
+  vim.api.nvim_create_autocmd("LspDetach", {
+    group = vim.api.nvim_create_augroup("UserLspFolding", { clear = true }),
+    callback = function(e)
+      -- Detach also fires when a buffer is wiped out
+      if vim.api.nvim_buf_is_valid(e.buf) then
+        restore_folding(e.buf, e.data.client_id)
+      end
+    end,
+  })
+
+  require("base.lsp.auto_enable").setup()
 end
 
 return M
