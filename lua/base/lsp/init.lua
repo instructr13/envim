@@ -36,6 +36,57 @@ local function setup_diagnostic()
   })
 end
 
+-- :[range]CodeAction [kind...], the command counterpart of `gra`
+local function setup_code_action_command()
+  local kinds = {
+    "quickfix",
+    "refactor",
+    "refactor.extract",
+    "refactor.inline",
+    "refactor.rewrite",
+    "source",
+    "source.organizeImports",
+    "source.fixAll",
+  }
+
+  vim.api.nvim_create_user_command("CodeAction", function(args)
+    local method = "textDocument/codeAction"
+
+    if vim.tbl_isempty(vim.lsp.get_clients({ bufnr = 0, method = method })) then
+      vim.notify("No LSP client supports code actions", vim.log.levels.WARN)
+
+      return
+    end
+
+    local opts = {}
+
+    if args.range > 0 then
+      local last =
+        vim.api.nvim_buf_get_lines(0, args.line2 - 1, args.line2, true)
+
+      opts.range = {
+        start = { args.line1, 0 },
+        ["end"] = { args.line2, #last[1] },
+      }
+    end
+
+    if #args.fargs > 0 then
+      opts.context = { only = args.fargs }
+    end
+
+    require("tiny-code-action").code_action(opts)
+  end, {
+    range = true,
+    nargs = "*",
+    complete = function(lead)
+      return vim.tbl_filter(function(kind)
+        return vim.startswith(kind, lead)
+      end, kinds)
+    end,
+    desc = "LSP code actions (optionally only the given kinds)",
+  })
+end
+
 local function enable_features()
   vim.lsp.inlay_hint.enable()
   vim.lsp.linked_editing_range.enable()
@@ -168,6 +219,7 @@ end
 
 function M.setup()
   setup_diagnostic()
+  setup_code_action_command()
   enable_features()
 
   vim.api.nvim_create_autocmd("LspAttach", {

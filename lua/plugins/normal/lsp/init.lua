@@ -149,9 +149,13 @@ return {
 
     dependencies = { "nvim-lua/plenary.nvim", "ibhagwan/fzf-lua" },
 
-    opts = {
-      picker = "fzf-lua",
-    },
+    opts = function()
+      return {
+        picker = "fzf-lua",
+        -- Falls back to the built-in diff when delta is not installed
+        backend = vim.fn.executable("delta") == 1 and "delta" or "vim",
+      }
+    end,
   },
   {
     "dnlhc/glance.nvim",
