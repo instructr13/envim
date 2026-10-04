@@ -61,6 +61,12 @@ return {
     priority = 900,
 
     opts = {
+      notify = {
+        configs = {
+          -- No box around each notification
+          default = { borders = false },
+        },
+      },
       -- The cmdline is handled by tiny-cmdline.nvim
       cmdline = false,
       select = {
@@ -96,7 +102,15 @@ return {
         ft_ignore = { "oil" },
         relculright = true,
         segments = {
-          { text = { " " } },
+          {
+            -- Code action available on the line (base.lsp.code_action)
+            sign = {
+              namespace = { "code_action_sign" },
+              colwidth = 1,
+              maxwidth = 1,
+            },
+            click = "v:lua.ScSa",
+          },
           {
             text = { builtin.lnumfunc, " " },
             click = "v:lua.ScLa",
@@ -107,14 +121,6 @@ return {
               auto = true,
               wrap = true,
             },
-          },
-          {
-            sign = {
-              name = { "LightbulbSign" },
-              maxwidth = 1,
-              colwidth = 1,
-            },
-            click = "v:lua.ScSa",
           },
           {
             text = { builtin.foldfunc },
@@ -131,9 +137,11 @@ return {
           { text = { "▏" } },
         },
         clickhandlers = {
-          LightbulbSign = function(args)
+          code_action_sign = function(args)
             if args.button == "l" then
-              vim.lsp.buf.code_action()
+              require("base.utils.mouse").picker(function()
+                require("tiny-code-action").code_action({})
+              end)()
             end
           end,
         },
@@ -153,7 +161,7 @@ return {
     },
   },
   {
-    -- Diagnostics summary, shown right below dropbar's winbar
+    -- Per-window diagnostics summary, floating at the top right
     "b0o/incline.nvim",
 
     lazy = true,
@@ -172,15 +180,10 @@ return {
 
     dependencies = {
       {
+        -- Mode, file info, command info and virtual env building blocks
         "Zeioth/heirline-components.nvim",
 
-        opts = {
-          icons = {
-            GitAdd = "",
-            GitChange = "",
-            GitDelete = "",
-          },
-        },
+        opts = {},
 
         version = "*",
       },

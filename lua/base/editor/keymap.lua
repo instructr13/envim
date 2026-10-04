@@ -183,52 +183,11 @@ leader("<tab>d", "<cmd>tabclose<cr>", "Close Tab")
 leader("<tab>o", "<cmd>tabonly<cr>", "Close other tabs")
 leader("<tab>[", "<cmd>tabprevious<cr>", "Previous Tab")
 
--- Toggles
-local function toggle(lhs, name, get, set)
-  leader("t" .. lhs, function()
-    local value = not get()
+-- Toggles (definitions live in base.editor.toggles)
+local toggles = require("base.editor.toggles")
 
-    set(value)
-    vim.notify(name .. ": " .. (value and "on" or "off"))
-  end, "Toggle " .. name)
+for _, t in ipairs(toggles.list()) do
+  leader("t" .. t.key, function()
+    toggles.toggle(t.key)
+  end, "Toggle " .. t.name)
 end
-
-toggle("w", "wrap", function()
-  return vim.wo.wrap
-end, function(v)
-  vim.wo.wrap = v
-end)
-toggle("s", "spell", function()
-  return vim.wo.spell
-end, function(v)
-  vim.wo.spell = v
-end)
-toggle("l", "relative line numbers", function()
-  return vim.g.relative_numbers
-end, function(v)
-  vim.g.relative_numbers = v
-  vim.go.relativenumber = v
-
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.wo[win].number then
-      vim.wo[win].relativenumber = v
-    end
-  end
-end)
-toggle("c", "conceal", function()
-  return vim.wo.conceallevel > 0
-end, function(v)
-  vim.wo.conceallevel = v and 2 or 0
-end)
-toggle("d", "diagnostics", vim.diagnostic.is_enabled, vim.diagnostic.enable)
-toggle(
-  "h",
-  "inlay hints",
-  vim.lsp.inlay_hint.is_enabled,
-  vim.lsp.inlay_hint.enable
-)
-toggle("f", "format on save", function()
-  return not vim.g.disable_autoformat
-end, function(v)
-  vim.g.disable_autoformat = not v
-end)

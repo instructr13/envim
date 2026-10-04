@@ -99,6 +99,9 @@ vim.opt.timeoutlen = 350
 vim.opt.ttimeoutlen = 10
 
 vim.opt.showmode = false
+-- Pending keys and the Visual selection size, shown by the statusline
+-- (cmdheight is 0, so there is no room for them elsewhere)
+vim.opt.showcmdloc = "statusline"
 vim.opt.history = 10000
 
 vim.opt.wrapscan = true

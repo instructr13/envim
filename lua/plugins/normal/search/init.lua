@@ -75,14 +75,23 @@ return {
       },
     },
 
-    opts = {
-      "default-title",
-      winopts = {
-        preview = {
-          layout = "flex",
+    opts = function()
+      return {
+        "default-title",
+        winopts = {
+          preview = {
+            layout = "flex",
+          },
         },
-      },
-    },
+        lsp = {
+          symbols = {
+            -- Same kind icons as dropbar and completion; kinds missing from
+            -- the table keep fzf-lua's own
+            symbol_icons = require("base.constants.icons").kinds,
+          },
+        },
+      }
+    end,
   },
   {
     "stevearc/quicker.nvim",

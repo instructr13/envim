@@ -47,4 +47,16 @@ M.diagnostics = {
   Ok = "\u{ebb1}",
 }
 
+-- Statuscolumn sign: a code action is available on the cursor line
+M.code_action = "\u{f140b}"
+
+-- Statusline toggle area (see base.editor.toggles): the few toggles worth a
+-- permanent spot, one fixed icon each; on/off is shown by color
+M.toggles = {
+  w = "\u{f05b6}", -- wrap
+  d = "\u{f05d6}", -- diagnostics
+  f = "\u{f18eb}", -- format on save
+  i = "\u{f0674}", -- inline completion
+}
+
 return M

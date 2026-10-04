@@ -147,10 +147,10 @@ return {
 
     lazy = true,
 
-    dependencies = { "nvim-lua/plenary.nvim" },
+    dependencies = { "nvim-lua/plenary.nvim", "ibhagwan/fzf-lua" },
 
     opts = {
-      picker = "buffer",
+      picker = "fzf-lua",
     },
   },
   {

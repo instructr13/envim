@@ -73,6 +73,8 @@ local function on_attach(client, bufnr)
     set({ "n", "x" }, "gra", function()
       require("tiny-code-action").code_action({})
     end, "Code Action", { buffer = bufnr })
+
+    require("base.lsp.code_action").attach(bufnr)
   end
 
   if client:supports_method("textDocument/references", bufnr) then
