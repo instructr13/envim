@@ -534,6 +534,11 @@ return {
 
     opts = {
       overwrite = {
+        -- smart-paste's expr mappings return "g@l"; glimmer's wrapper drops
+        -- that return value, which turns p / P into no-ops
+        paste = {
+          enabled = false,
+        },
         -- Wraps the n / N / * / # mappings set up for nvim-hlslens
         search = {
           enabled = true,
