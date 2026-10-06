@@ -15,19 +15,20 @@ return {
     end,
   },
   {
-    "CKolkey/ts-node-action",
+    "Wansmer/treesj",
 
     lazy = true,
 
-    cmd = "NodeAction",
-
-    init = function()
-      local keymap = require("base.utils.keymap").keymap
-
-      keymap("n", "<C-s>", function()
-        require("ts-node-action").node_action()
-      end, "Trigger Node Action")
-    end,
+    keys = {
+      {
+        "<C-s>",
+        function()
+          require("treesj").toggle()
+        end,
+        mode = "n",
+        desc = "Toggle split or join",
+      },
+    },
 
     opts = {},
   },
