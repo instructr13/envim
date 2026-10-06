@@ -219,7 +219,14 @@ vim.opt.synmaxcol = 2500
 -- backup is executed by other plugin
 vim.opt.backup = false
 vim.opt.writebackup = false
-vim.opt.confirm = true
+
+vim.api.nvim_create_autocmd("UIEnter", {
+  once = true,
+
+  callback = function()
+    vim.o.confirm = true
+  end,
+})
 
 vim.opt.autowrite = true
 vim.opt.writeany = true
