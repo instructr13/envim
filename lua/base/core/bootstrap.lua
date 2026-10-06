@@ -41,6 +41,13 @@ local function bootstrap_plugin_manager()
   })
 
   if vim.v.shell_error ~= 0 then
+    -- Without a UI nobody can press a key, so getchar() would block forever
+    if #vim.api.nvim_list_uis() == 0 then
+      io.stderr:write("Failed to bootstrap plugin manager:\n", out, "\n")
+
+      os.exit(1)
+    end
+
     vim.api.nvim_echo({
       { "Failed to bootstrap plugin manager:\n", "ErrorMsg" },
       { out, "WarningMsg" },
